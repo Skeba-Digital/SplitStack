@@ -3,7 +3,7 @@ import fs from "fs-extra";
 import path from "path";
 
 const router = express.Router();
-const PROJECTS_ROOT = path.join(process.cwd(), "projects");
+const PROJECTS_ROOT = path.resolve(process.cwd(), "..", "projects");
 
 fs.ensureDirSync(PROJECTS_ROOT);
 
