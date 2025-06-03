@@ -1,17 +1,10 @@
-/* =================================================================== */
-/* === client/src/components/TopBar.jsx ============================== */
-/* =================================================================== */
+/* ================================================================== */
+/* === client/src/components/TopBar.jsx (REPLACED) ================== */
+/* ================================================================== */
 import React from "react";
+import { Button } from "antd";
 
-function TopBar({
-  projectName,
-  mode,
-  setMode,
-  onSave,
-  onCompose,
-  onNewFile,
-  onBack
-}) {
+function TopBar({ projectName, mode, setMode, onSave, onBack }) {
   return (
     <div
       style={{
@@ -25,17 +18,13 @@ function TopBar({
     >
       <strong style={{ marginRight: "auto" }}>{projectName}</strong>
 
-      <button onClick={onBack}>🏠 Projects</button>
-      <button onClick={onCompose}>🔄 Compose</button>
-      <button onClick={onSave}>💾 Save</button>
+      <Button onClick={onBack}>🏠 Projects</Button>
+      <Button type="primary" onClick={onSave}>💾 Save & Split</Button>
 
-      <button onClick={() => setMode(prev => (prev === "single" ? "tabs" : "single"))}>
-        {mode === "single" ? "🗂 Tabs View" : "📝 Master View"}
-      </button>
-
-      {mode === "tabs" && <button onClick={onNewFile}>➕ New File</button>}
+      <Button onClick={() => setMode(prev => (prev === "single" ? "tabs" : "single"))}>
+        {mode === "single" ? "🗂 Tabs View" : "📝 Master View"}
+      </Button>
     </div>
   );
 }
-
 export default TopBar;

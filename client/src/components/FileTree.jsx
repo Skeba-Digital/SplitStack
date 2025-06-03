@@ -1,35 +1,46 @@
+/* ================================================================== */
+/* === client/src/components/FileTree.jsx (REPLACED) ================ */
+/* ================================================================== */
 import React from "react";
+import { Tree } from "antd";
+import { FolderOutlined, FileOutlined } from "@ant-design/icons";
 
-function buildTree(paths) {
+function buildTreeData(paths) {
   const root = {};
-  paths.forEach((p) => {
+
+  paths.forEach(p => {
     const parts = p.split("/");
-    let current = root;
+    let node = root;
     parts.forEach((part, idx) => {
-      if (!current[part]) current[part] = idx === parts.length - 1 ? null : {};
-      current = current[part] || {};
+      if (!node[part]) node[part] = idx === parts.length - 1 ? null : {};
+      node = node[part] || {};
     });
   });
-  return root;
+
+  const toAntd = (obj, parentKey = "") =>
+    Object.entries(obj).map(([name, child]) => {
+      const key = parentKey ? `${parentKey}/${name}` : name;
+      return child
+        ? {
+            title: name,
+            key,
+            icon: <FolderOutlined />,
+            children: toAntd(child, key)
+          }
+        : {
+            title: name,
+            key,
+            icon: <FileOutlined />,
+            isLeaf: true
+          };
+    });
+
+  return toAntd(root);
 }
 
-function Tree({ node }) {
-  return (
-    <ul style={{ listStyle: "none", paddingLeft: "1rem" }}>
-      {Object.entries(node).map(([name, child]) => (
-        <li key={name}>
-          {name}
-          {child && <Tree node={child} />}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function FileTree({ files }) {
+function FileTree({ files, rootName = "project" }) {
   if (!files.length) return <p style={{ textAlign: "center" }}>No files yet.</p>;
-  const tree = buildTree(files);
-  return <Tree node={tree} />;
+  const treeData = [{ title: rootName, key: rootName, icon: <FolderOutlined />, children: buildTreeData(files) }];
+  return <Tree showIcon defaultExpandAll treeData={treeData} />;
 }
-
 export default FileTree;

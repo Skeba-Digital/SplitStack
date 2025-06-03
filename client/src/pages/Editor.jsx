@@ -1,98 +1,105 @@
-/* =================================================================== */
-/* === client/src/pages/Editor.jsx (FULL NEW FILE) =================== */
-/* =================================================================== */
-import React, { useEffect, useState } from "react";
+/* ================================================================ */
+/* === client/src/pages/Editor.jsx  (replace entire file again) ==== */
+/* ================================================================ */
+import React, { useEffect, useMemo, useState } from "react";
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api"; 
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import axios        from "axios";
+import { message }  from "antd";
 import MonacoEditor from "react-monaco-editor";
-import FileTree from "../components/FileTree";
-import TopBar  from "../components/TopBar";
-import TabBar  from "../components/TabBar";
+
+import FileTree      from "../components/FileTree";
+import TopBar        from "../components/TopBar";
+import TabBar        from "../components/TabBar";
+import NewFileModal  from "../components/NewFileModal";
 import { parseMasterFile } from "../utils/fileParser";
 
 function Editor() {
   const { projectName } = useParams();
   const navigate = useNavigate();
 
-  /* ---------- state ---------- */
-  const [mode, setMode]        = useState("single"); // "single" | "tabs"
+  const [mode, setMode]        = useState("single");
   const [master, setMaster]    = useState("// start typing…");
-  const [files,  setFiles]     = useState([]);       // list of paths (for tree)
-  const [tabs,   setTabs]      = useState([]);       // [{path, code}]
-  const [active, setActive]    = useState("");       // active tab path
+  const [files,  setFiles]     = useState([]);
+  const [tabs,   setTabs]      = useState([]);
+  const [active, setActive]    = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
 
-  /* ---------- helpers ---------- */
+  /* ---------- helper fns ---------- */
   const syncTabsFromMaster = content => {
     const parsed = parseMasterFile(content);
     setTabs(parsed);
     setActive(parsed[0]?.path || "");
   };
+  const buildMasterFromTabs = arr =>
+    arr.map(t => `// === file: ${t.path} ===\n${t.code.trimEnd()}`).join("\n\n");
 
-  const buildMasterFromTabs = tabsArr => {
-    let out = "";
-    tabsArr.forEach(({ path, code }) => {
-      out += `// === file: ${path} ===\n${code.trimEnd()}\n\n`;
-    });
-    return out.trimEnd();
-  };
+  /* ---------- load master on mount ---------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get(`/api/projects/${projectName}/master`);
+        const content = res.data.content;
+        setMaster(content);
+        setFiles(parseMasterFile(content).map(p => p.path));
+        syncTabsFromMaster(content);
+      } catch {
+        message.error("Failed to load master file");
+      }
+    })();
+    // eslint-disable-next-line
+  }, [projectName]);
 
-  /* ---------- load ---------- */
-  const loadMaster = async () => {
-    const res = await axios.get(`/api/projects/${projectName}/master`);
-    setMaster(res.data.content);
-    setFiles(res.data.files || []);
-    syncTabsFromMaster(res.data.content);
-  };
-
-  /* ---------- save (master → split) ---------- */
+  /* ---------- save & split ---------- */
   const saveMaster = async () => {
-    const content = mode === "single" ? master : buildMasterFromTabs(tabs);
-    const res = await axios.put(`/api/projects/${projectName}/master`, { content });
-    setFiles(res.data.files);
-    setMaster(content);
-    alert("Saved & split!");
+    try {
+      const content = mode === "single" ? master : buildMasterFromTabs(tabs);
+      const res = await axios.put(`/api/projects/${projectName}/master`, { content });
+      setFiles(res.data.files);
+      setMaster(content);
+      syncTabsFromMaster(content);  
+      message.success("Saved & split!");
+    } catch {
+      message.error("Save failed");
+    }
   };
 
-  /* ---------- compose (folder → master) ---------- */
-  const composeMaster = async () => {
-    const res = await axios.post(`/api/projects/${projectName}/compose`);
-    setMaster(res.data.content);
-    syncTabsFromMaster(res.data.content);
-    setFiles(res.data.files);
-    alert("Composed master.txt from folder!");
-  };
-
-  /* ---------- new file (tabs mode) ---------- */
-  const newFile = () => {
-    const path = prompt("Enter new file path, e.g. src/newFile.js");
-    if (!path) return;
-    if (tabs.some(t => t.path === path)) return alert("File already exists.");
-    const updated = [...tabs, { path, code: "" }];
-    setTabs(updated);
+  /* ---------- tab ops ---------- */
+  const createFile = path => {
+    if (tabs.some(t => t.path === path)) return message.error("File exists");
+    setTabs([...tabs, { path, code: "" }]);
     setActive(path);
+    setModalOpen(false);
   };
-
-  /* ---------- close tab ---------- */
+  const renameFile = (oldPath, newPath) => {
+    if (tabs.some(t => t.path === newPath)) return message.error("Name in use");
+    setTabs(tabs.map(t => (t.path === oldPath ? { ...t, path: newPath } : t)));
+    setActive(newPath);
+  };
   const closeTab = path => {
     const filtered = tabs.filter(t => t.path !== path);
     setTabs(filtered);
     setActive(filtered[0]?.path || "");
   };
 
-  /* ---------- effect ---------- */
-  useEffect(() => {
-    loadMaster();
-    // eslint-disable-next-line
-  }, [projectName]);
+  /* ---------- dirs for New‑File modal ---------- */
+  const existingDirs = useMemo(() => {
+    const dirs = new Set([""]);
+    tabs.forEach(t => {
+      const parts = t.path.split("/");
+      if (parts.length > 1) dirs.add(parts.slice(0, -1).join("/"));
+    });
+    return Array.from(dirs).sort();
+  }, [tabs]);
 
-  /* ---------- editor content / onChange ---------- */
-  const singleOnChange = val => setMaster(val);
-
-  const tabOnChange = val => {
-    setTabs(tabs.map(t => (t.path === active ? { ...t, code: val } : t)));
-  };
-
-  const activeTab = tabs.find(t => t.path === active);
+  /* ---------- Monaco mount callback ---------- */
+ const editorDidMount = () => {
+  // enable JS diagnostics if the TS worker is present
+monaco.languages?.typescript?.javascriptDefaults.setDiagnosticsOptions({
+    noSemanticValidation: false,
+    noSyntaxValidation  : false
+   });
+   };
 
   /* ---------- render ---------- */
   return (
@@ -102,8 +109,6 @@ function Editor() {
         mode={mode}
         setMode={setMode}
         onSave={saveMaster}
-        onCompose={composeMaster}
-        onNewFile={newFile}
         onBack={() => navigate("/")}
       />
 
@@ -113,45 +118,54 @@ function Editor() {
           active={active}
           setActive={setActive}
           onClose={closeTab}
+          onNewFile={() => setModalOpen(true)}
+          onRename={renameFile}
         />
       )}
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        {/* ------------ Editor pane ------------ */}
+        {/* ----------- editor ----------- */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {mode === "single" ? (
             <MonacoEditor
+            monaco={monaco}   
+              editorDidMount={editorDidMount}
               language="javascript"
               value={master}
-              onChange={singleOnChange}
-              options={{ automaticLayout: true }}
+              onChange={val => setMaster(val)}
+              options={{ automaticLayout: true, lineNumbers: "off" }}
             />
           ) : (
-            activeTab && (
+            tabs.find(t => t.path === active) && (
               <MonacoEditor
+              monaco={monaco}   
+                editorDidMount={editorDidMount}
                 language="javascript"
-                value={activeTab.code}
-                onChange={tabOnChange}
-                options={{ automaticLayout: true }}
+                value={tabs.find(t => t.path === active).code}
+                onChange={val =>
+                  setTabs(tabs.map(t => (t.path === active ? { ...t, code: val } : t)))
+                }
+                options={{ automaticLayout: true, lineNumbers: "off" }}
               />
             )
           )}
         </div>
 
-        {/* ------------ File‑tree pane ----------- */}
-        <div
-          style={{
-            width: "300px",
-            overflowY: "auto",
-            borderLeft: "1px solid #ccc"
-          }}
-        >
+        {/* ----------- file tree ----------- */}
+        <div style={{ width: 300, overflowY: "auto", borderLeft: "1px solid #ccc" }}>
           <h3 style={{ textAlign: "center" }}>File Tree</h3>
-          <FileTree files={files} />
+          <FileTree files={files} rootName={projectName} />
         </div>
       </div>
+
+      {/* ----------- modal ----------- */}
+      <NewFileModal
+        visible={modalOpen}
+        onCreate={createFile}
+        onCancel={() => setModalOpen(false)}
+        existingDirs={existingDirs}
+      />
     </div>
   );
 }
-
 export default Editor;
