@@ -1,29 +1,50 @@
 /* ================================================================== */
-/* === client/src/components/TopBar.jsx (REPLACED) ================== */
+/* === client/src/components/TopBar.jsx  (REPLACE) ================== */
 /* ================================================================== */
 import React from "react";
-import { Button } from "antd";
+import { Button, Tooltip } from "antd";
+import {
+  CodeOutlined,
+  FolderOutlined,
+  SaveOutlined,
+  AppstoreOutlined
+} from "@ant-design/icons";
 
-function TopBar({ projectName, mode, setMode, onSave, onBack }) {
+function TopBar({ mode, setMode, onSave, onBack }) {
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        padding: "0.5rem 1rem",
-        background: "#282c34",
+        padding: "6px 12px",
+        background: "#1f1f1f",
         color: "#fff",
-        gap: "0.75rem"
+        gap: 10
       }}
     >
-      <strong style={{ marginRight: "auto" }}>{projectName}</strong>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <CodeOutlined />
+        <span style={{ fontWeight: 600 }}>Split Coder</span>
+      </div>
 
-      <Button onClick={onBack}>🏠 Projects</Button>
-      <Button type="primary" onClick={onSave}>💾 Save & Split</Button>
+      <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+        <Button icon={<FolderOutlined />} onClick={onBack}>
+          Projects
+        </Button>
 
-      <Button onClick={() => setMode(prev => (prev === "single" ? "tabs" : "single"))}>
-        {mode === "single" ? "🗂 Tabs View" : "📝 Master View"}
-      </Button>
+        <Tooltip title="Save master and split into files">
+          <Button type="primary" icon={<SaveOutlined />} onClick={onSave}>
+            Save
+          </Button>
+        </Tooltip>
+
+        <Button
+          icon={<AppstoreOutlined />}
+          onClick={() => setMode(m => (m === "single" ? "tabs" : "single"))}
+        >
+          {mode === "single" ? "Tabs" : "Master"}
+        </Button>
+      </div>
     </div>
   );
 }

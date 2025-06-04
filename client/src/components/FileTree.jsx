@@ -1,13 +1,12 @@
-/* ================================================================== */
-/* === client/src/components/FileTree.jsx (REPLACED) ================ */
-/* ================================================================== */
+/* =================================================================== */
+/* === 2 | client/src/components/FileTree.jsx (REPLACED) ============= */
+/* =================================================================== */
 import React from "react";
-import { Tree } from "antd";
-import { FolderOutlined, FileOutlined } from "@ant-design/icons";
+import { Tree, Modal, Input, message } from "antd";
+import { FolderOpenOutlined, FolderOutlined, FileOutlined } from "@ant-design/icons";
 
 function buildTreeData(paths) {
   const root = {};
-
   paths.forEach(p => {
     const parts = p.split("/");
     let node = root;
@@ -16,31 +15,73 @@ function buildTreeData(paths) {
       node = node[part] || {};
     });
   });
-
-  const toAntd = (obj, parentKey = "") =>
+  const toAntd = (obj, parent = "") =>
     Object.entries(obj).map(([name, child]) => {
-      const key = parentKey ? `${parentKey}/${name}` : name;
+      const key = parent ? `${parent}/${name}` : name;
       return child
         ? {
             title: name,
             key,
             icon: <FolderOutlined />,
-            children: toAntd(child, key)
+            children: toAntd(child, key),
+            isLeaf: false
           }
-        : {
-            title: name,
-            key,
-            icon: <FileOutlined />,
-            isLeaf: true
-          };
+        : { title: name, key, icon: <FileOutlined />, isLeaf: true };
     });
-
   return toAntd(root);
 }
 
-function FileTree({ files, rootName = "project" }) {
-  if (!files.length) return <p style={{ textAlign: "center" }}>No files yet.</p>;
-  const treeData = [{ title: rootName, key: rootName, icon: <FolderOutlined />, children: buildTreeData(files) }];
-  return <Tree showIcon defaultExpandAll treeData={treeData} />;
+function FileTree({
+  projects,
+  currentProject,
+  files,
+  onSelectFile,
+  onSwitchProject,
+  onAddDir
+}) {
+  const rootNodes = projects.map(p => ({
+    title: p,
+    key: p,
+    icon: p === currentProject ? <FolderOpenOutlined /> : <FolderOutlined />,
+    children: p === currentProject ? buildTreeData(files) : [],
+    isLeaf: false
+  }));
+
+  const handleSelect = ([key], { node }) => {
+    if (!key) return;
+    if (projects.includes(key)) {
+      if (key !== currentProject) onSwitchProject(key);
+    } else {
+      if (node.isLeaf) onSelectFile(key);
+    }
+  };
+
+  /* new folder menu */
+  const handleRightClick = ({ node }) => {
+    if (node.isLeaf) return;
+    Modal.confirm({
+      title: "New folder inside " + node.key,
+      content: <Input id="newDirInput" placeholder="folder-name" />,
+      okText: "Create",
+      onOk: () => {
+        const name = document.getElementById("newDirInput").value.trim();
+        if (!name) return;
+        const newPath = `${node.key}/${name}`;
+        onAddDir(newPath);
+        message.success("Folder added (save to persist)");
+      }
+    });
+  };
+
+  return (
+    <Tree
+      showIcon
+      defaultExpandAll
+      treeData={rootNodes}
+      onSelect={handleSelect}
+      onRightClick={handleRightClick}
+      style={{ width: 220, overflowY: "auto", borderRight: "1px solid #aaa" }}
+    />
+  );
 }
 export default FileTree;

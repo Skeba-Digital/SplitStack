@@ -1,74 +1,94 @@
-/* =================================================================== */
-/* === client/src/components/TabBar.jsx ============================== */
-/* =================================================================== */
+/* ================================================================== */
+/* === client/src/components/TabBar.jsx  (REPLACE) ================== */
+/* ================================================================== */
 import React, { useState } from "react";
+import { CloseOutlined, FileOutlined, PlusOutlined } from "@ant-design/icons";
 
 function TabBar({ files, active, setActive, onClose, onNewFile, onRename }) {
   const [editing, setEditing] = useState(null);
-  const [temp, setTemp]       = useState("");
+  const [temp, setTemp] = useState("");
 
   const startEdit = path => {
     setEditing(path);
     setTemp(path);
   };
-
-  const finishEdit = () => {
+  const finish = () => {
     if (editing && temp.trim() && temp !== editing) onRename(editing, temp.trim());
     setEditing(null);
   };
 
   return (
-    <div style={{ display: "flex", background: "#ddd", borderBottom: "1px solid #aaa" }}>
+    <div
+      style={{
+        display: "flex",
+        background: "#f5f5f5",
+        borderBottom: "1px solid #d9d9d9",
+        overflowX: "auto"
+      }}
+    >
       {files.map(f => (
         <div
           key={f.path}
           onDoubleClick={() => startEdit(f.path)}
           onClick={() => setActive(f.path)}
           style={{
-            padding: "0.25rem 0.75rem",
+            padding: "4px 12px",
             cursor: "pointer",
             background: active === f.path ? "#fff" : "transparent",
-            borderRight: "1px solid #aaa",
+            borderRight: "1px solid #d9d9d9",
             display: "flex",
             alignItems: "center",
-            gap: "0.25rem",
-            maxWidth: 180
+            gap: 6,
+            maxWidth: 200
           }}
         >
+          <FileOutlined />
           {editing === f.path ? (
             <input
               autoFocus
               value={temp}
               onChange={e => setTemp(e.target.value)}
-              onBlur={finishEdit}
-              onKeyDown={e => e.key === "Enter" && finishEdit()}
+              onBlur={finish}
+              onKeyDown={e => e.key === "Enter" && finish()}
               style={{ flex: 1, minWidth: 0 }}
             />
           ) : (
-            <span title={f.path} style={{ whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+            <span
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
+              }}
+            >
               {f.path.split("/").pop()}
             </span>
           )}
           {files.length > 1 && (
-            <span onClick={e => (e.stopPropagation(), onClose(f.path))} style={{ cursor: "pointer" }}>✕</span>
+            <CloseOutlined
+              onClick={e => {
+                e.stopPropagation();
+                onClose(f.path);
+              }}
+              style={{ fontSize: 10 }}
+            />
           )}
         </div>
       ))}
 
-      {/* PLUS button */}
       <div
         onClick={onNewFile}
         style={{
-          padding: "0 0.75rem",
+          padding: "4px 10px",
           cursor: "pointer",
-          userSelect: "none",
-          fontWeight: "bold"
+          display: "flex",
+          alignItems: "center",
+          color: "#1677ff"
         }}
       >
-        ＋
+        <PlusOutlined />
       </div>
     </div>
   );
 }
-
 export default TabBar;
