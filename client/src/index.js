@@ -1,9 +1,7 @@
+import "monaco-editor/min/vs/editor/editor.main.css";   // load editor styles FIRST
 import React from "react";
-import "antd/dist/reset.css"; 
+import "antd/dist/reset.css";
 import ReactDOM from "react-dom/client";
-import "monaco-editor/min/vs/editor/editor.main.css";
-import { configureMonaco } from "./setupMonaco";
-
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 

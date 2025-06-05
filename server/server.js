@@ -1,4 +1,4 @@
-/* === server/server.js === */
+// server/server.js
 import express from "express";
 import cors     from "cors";
 import path     from "path";
@@ -9,20 +9,25 @@ import fileRoutes    from "./routes/fileRoutes.js";
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ——— 1) ENABLE CORS FOR ALL ORIGINS ———
+// This must come BEFORE any “app.use('/api/projects', ...)”
+app.use(cors());       // allows Access-Control-Allow-Origin: *
+
+// 2) JSON body parsing
 app.use(express.json({ limit: "10mb" }));
 
-// API routes
+// 3) MOUNT API ROUTES
 app.use("/api/projects", projectRoutes);
-app.use("/api/projects", fileRoutes);          // nested under same base
+app.use("/api/projects", fileRoutes);
 
-// Serve CRA build (when `npm run build` has been executed)
+// 4) (optional) Serve React build if present
 const buildPath = path.join(process.cwd(), "..", "client", "build");
 if (fs.existsSync(buildPath)) {
   app.use(express.static(buildPath));
-  app.get("*", (_, res) =>
+  app.get("*", (_req, res) =>
     res.sendFile(path.join(buildPath, "index.html"))
   );
 }
 
+// 5) START
 app.listen(PORT, () => console.log(`✅  Server running on port ${PORT}`));

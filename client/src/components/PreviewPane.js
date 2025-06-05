@@ -1,60 +1,66 @@
-/* =================================================================== */
-/* === 1 | client/src/components/PreviewPane.jsx  (NEW) ============== */
-/* =================================================================== */
+// client/src/components/PreviewPane.jsx
 import React, { useEffect, useRef } from "react";
 
-/**
- * props:
- *  - files   : [{ path, code }]
- *  - visible : boolean
- *  - height  : number (px)
- */
-function PreviewPane({ files, visible = true, height = 300 }) {
+function PreviewPane({ files, visible = true }) {
   const iframeRef = useRef(null);
 
-  /* build srcdoc */
-  const htmlText = React.useMemo(() => {
+  const src = React.useMemo(() => {
     if (!files.length) return "<html><body><em>No files</em></body></html>";
 
-    const htmlFiles = files.filter(f => f.path.endsWith(".html"));
-    if (!htmlFiles.length)
-      return "<html><body><em>No .html file found</em></body></html>";
+    const htmlFile = files.find((f) => f.path.endsWith(".html")) || {
+      code: "<body><em>No .html file</em></body>",
+    };
 
-    const cssBlock = files
-      .filter(f => f.path.endsWith(".css"))
-      .map(f => `<style>${f.code}</style>`)
-      .join("\n");
+    // Inline CSS
+    const css = files
+      .filter((f) => f.path.endsWith(".css"))
+      .map((f) => `<style>${f.code}</style>`)
+      .join("");
 
-    const jsBlock = files
-      .filter(f => f.path.endsWith(".js"))
-      .map(f => `<script>${f.code}</script>`)
-      .join("\n");
+    // Inline JS
+    const js = files
+      .filter((f) => f.path.endsWith(".js"))
+      .map((f) => `<script>${f.code}<\/script>`)
+      .join("");
 
-    let doc = htmlFiles[0].code;
-    if (!/<html[\s>]/i.test(doc)) doc = `<html><body>${doc}</body></html>`;
+    // Remove any <link> tags that might produce MIME errors
+    let doc = htmlFile.code.replace(/<link\s[^>]*>/gi, "");
+    if (!/<html/i.test(doc)) {
+      doc = `<html><head></head><body>${doc}</body></html>`;
+    }
+    // Inject CSS just before </head>
+    doc = doc.replace(/<\/head>/i, css + "</head>");
+    // Inject JS just before </body>
+    doc = doc.replace(/<\/body>/i, js + "</body>");
 
-    doc = doc.replace(/<\/head>/i, `${cssBlock}\n</head>`);
-    doc = doc.replace(/<\/body>/i, `${jsBlock}\n</body>`);
+    // Ensure a viewport meta tag for responsiveness
+    if (!/<meta\s[^>]*viewport/i.test(doc)) {
+      doc = doc.replace(
+        /<head>/i,
+        `<head><meta name="viewport" content="width=device-width, initial-scale=1">`
+      );
+    }
 
     return doc;
   }, [files]);
 
   useEffect(() => {
     if (iframeRef.current) {
-      iframeRef.current.srcdoc = htmlText;
+      iframeRef.current.srcdoc = src;
     }
-  }, [htmlText]);
+  }, [src]);
 
   if (!visible) return null;
   return (
-    <div style={{ borderTop: "1px solid #aaa", height }}>
+    <div style={{ flex: 1, borderTop: "1px solid #ccc" }}>
       <iframe
         ref={iframeRef}
         title="preview"
         sandbox="allow-scripts allow-same-origin"
-        style={{ width: "100%", height: "100%", border: "none" }}
+        style={{ width: "100%", height: "100%", border: 0 }}
       />
     </div>
   );
 }
+
 export default PreviewPane;

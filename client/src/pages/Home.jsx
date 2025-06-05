@@ -1,5 +1,5 @@
 /* ================================================================== */
-/* === 2 | client/src/pages/Home.jsx (FULL NEW LAYOUT) ============== */
+/* === 2 | client/src/pages/Home.jsx (FULL NEW LAYOUT) ============== */
 /* ================================================================== */
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,9 @@ import { Button, Card, Col, Modal, Row, Space, message, Typography } from "antd"
 
 const { Title } = Typography;
 
+// Point to Express backend instead of React’s dev server
+const API_BASE = "http://localhost:5100/api/projects";
+
 function Home() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -15,16 +18,21 @@ function Home() {
   const [newName,  setNewName]  = useState("");
 
   const load = async () => {
-    const res = await axios.get("/api/projects");
-    setProjects(res.data.projects);
+    try {
+      const res = await axios.get(`${API_BASE}`);
+      setProjects(res.data.projects);
+    } catch {
+      message.error("Failed to load projects");
+    }
   };
+
   useEffect(() => { load(); }, []);
 
   /* ---------- create ---------- */
   const create = async () => {
     if (!newName.trim()) return;
     try {
-      await axios.post("/api/projects", { name: newName.trim() });
+      await axios.post(`${API_BASE}`, { name: newName.trim() });
       message.success("Project created");
       setNewName("");
       setCreating(false);
@@ -43,7 +51,7 @@ function Home() {
       okType: "danger",
       onOk: async () => {
         try {
-          await axios.delete(`/api/projects/${encodeURIComponent(name)}`);
+          await axios.delete(`${API_BASE}/${encodeURIComponent(name)}`);
           message.success("Deleted");
           load();
         } catch {
@@ -64,12 +72,18 @@ function Home() {
       <Row gutter={[16, 16]}>
         {projects.map(p => (
           <Col key={p} xs={24} sm={12} md={8}>
-            <Card title={p} size="small"
-                  actions={[
-                    <Button type="link" onClick={() => navigate(`/project/${encodeURIComponent(p)}`)}>Open</Button>,
-                    <Button danger type="link" onClick={() => del(p)}>Delete</Button>
-                  ]}>
-            </Card>
+            <Card
+              title={p}
+              size="small"
+              actions={[
+                <Button type="link" onClick={() => navigate(`/project/${encodeURIComponent(p)}`)}>
+                  Open
+                </Button>,
+                <Button danger type="link" onClick={() => del(p)}>
+                  Delete
+                </Button>
+              ]}
+            />
           </Col>
         ))}
       </Row>
@@ -92,4 +106,5 @@ function Home() {
     </div>
   );
 }
+
 export default Home;

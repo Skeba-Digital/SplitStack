@@ -1,11 +1,14 @@
-/* =================================================================== */
-/* === 2 | client/src/components/FileTree.jsx (REPLACED) ============= */
-/* =================================================================== */
+// client/src/components/FileTree.jsx
 import React from "react";
 import { Tree, Modal, Input, message } from "antd";
-import { FolderOpenOutlined, FolderOutlined, FileOutlined } from "@ant-design/icons";
+import {
+  FolderOpenOutlined,
+  FolderOutlined,
+  FileOutlined,
+  DeleteOutlined
+} from "@ant-design/icons";
 
-function buildTreeData(paths) {
+function buildTreeData(paths, onDeleteFile) {
   const root = {};
   paths.forEach(p => {
     const parts = p.split("/");
@@ -15,19 +18,55 @@ function buildTreeData(paths) {
       node = node[part] || {};
     });
   });
+
   const toAntd = (obj, parent = "") =>
     Object.entries(obj).map(([name, child]) => {
       const key = parent ? `${parent}/${name}` : name;
-      return child
-        ? {
-            title: name,
-            key,
-            icon: <FolderOutlined />,
-            children: toAntd(child, key),
-            isLeaf: false
-          }
-        : { title: name, key, icon: <FileOutlined />, isLeaf: true };
+
+      if (child) {
+        // folder node (still use icon prop here)
+        return {
+          title: name,
+          key,
+          icon: <FolderOutlined />,
+          children: toAntd(child, key),
+          isLeaf: false
+        };
+      } else {
+        // leaf (file) node: put FileOutlined, filename, and DeleteOutlined in one flex container
+        return {
+          title: (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%"
+              }}
+            >
+              {/* left side: file icon + name */}
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <FileOutlined style={{ marginRight: 4 }} />
+                <span>{name}</span>
+              </div>
+
+              {/* right side: delete icon */}
+              <DeleteOutlined
+                onClick={e => {
+                  e.stopPropagation();
+                  onDeleteFile(key);
+                }}
+                style={{ color: "#ff4d4f" }}
+              />
+            </div>
+          ),
+          key,
+          // no `icon` prop for leaf—everything is inside title now
+          isLeaf: true
+        };
+      }
     });
+
   return toAntd(root);
 }
 
@@ -37,13 +76,14 @@ function FileTree({
   files,
   onSelectFile,
   onSwitchProject,
-  onAddDir
+  onAddDir,
+  onDeleteFile
 }) {
   const rootNodes = projects.map(p => ({
     title: p,
     key: p,
     icon: p === currentProject ? <FolderOpenOutlined /> : <FolderOutlined />,
-    children: p === currentProject ? buildTreeData(files) : [],
+    children: p === currentProject ? buildTreeData(files, onDeleteFile) : [],
     isLeaf: false
   }));
 
@@ -56,7 +96,6 @@ function FileTree({
     }
   };
 
-  /* new folder menu */
   const handleRightClick = ({ node }) => {
     if (node.isLeaf) return;
     Modal.confirm({
@@ -84,4 +123,5 @@ function FileTree({
     />
   );
 }
+
 export default FileTree;
